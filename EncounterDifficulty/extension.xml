@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<root version="4.1" release="1.0">
+	<properties>
+		<name>Encounter Difficulty 5e 2014</name>
+		<version>1</version>
+		<description>Calculates encounter difficulty based on characters in the party, for 2014 5th edition rules</description>
+		<author>Leslie Viljoen</author>
+		<loadorder>50</loadorder>
+		<ruleset>
+			<name>5E</name>
+		</ruleset>
+	</properties>
+
+	<base>
+		<includefile source="campaign/battle_diff.xml" />
+		<script name="EncounterDifficulty" file="scripts/encounter_difficulty.lua"/>
+	</base>
+</root>
+

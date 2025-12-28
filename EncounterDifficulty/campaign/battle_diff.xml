@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <windowclass name="battle" merge="join">
+    <sheetdata>
+      <stringfield name="difficultytext" readonly="true">
+        <bounds>145,83,75,30</bounds>
+        <font>sheetlabel</font>
+        <frame>fielddark</frame>
+        <tooltiptext>Live 5E encounter difficulty (DMG XP thresholds + multipliers)</tooltiptext>
+      </stringfield>
+    </sheetdata>
+  </windowclass>
+</root>
+

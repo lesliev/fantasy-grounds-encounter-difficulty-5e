@@ -1,0 +1,364 @@
+local XP_THRESHOLDS = {
+  [1]  = {25, 50, 75, 100},
+  [2]  = {50, 100, 150, 200},
+  [3]  = {75, 150, 225, 400},
+  [4]  = {125, 250, 375, 500},
+  [5]  = {250, 500, 750, 1100},
+  [6]  = {300, 600, 900, 1400},
+  [7]  = {350, 750, 1100, 1700},
+  [8]  = {450, 900, 1400, 2100},
+  [9]  = {550, 1100, 1600, 2400},
+  [10] = {600, 1200, 1900, 2800},
+  [11] = {800, 1600, 2400, 3600},
+  [12] = {1000, 2000, 3000, 4500},
+  [13] = {1100, 2200, 3400, 5100},
+  [14] = {1250, 2500, 3800, 5700},
+  [15] = {1400, 2800, 4300, 6400},
+  [16] = {1600, 3200, 4800, 7200},
+  [17] = {2000, 3900, 5900, 8800},
+  [18] = {2100, 4200, 6300, 9500},
+  [19] = {2400, 4900, 7300, 10900},
+  [20] = {2800, 5700, 8500, 12700},
+}
+
+local openBattles = {}
+
+local function clamp(n, lo, hi)
+  if n < lo then return lo end
+  if n > hi then return hi end
+  return n
+end
+
+local function getPartyCharNodes()
+  local t = {}
+  for _, node in pairs(DB.getChildren("partysheet.partyinformation") or {}) do
+    local sClass, sRecord = DB.getValue(node, "link", "", "")
+    if sRecord and sRecord ~= "" then
+      local pc = DB.findNode(sRecord)
+      if pc then
+        t[#t+1] = pc
+      end
+    end
+  end
+  return t
+end
+
+local function getPCLevel(nodePC)
+  -- Try common 5E fields first
+  local nLevel = DB.getValue(nodePC, "level", 0)
+  if nLevel and nLevel > 0 then return nLevel end
+
+  -- Fallback: sum class levels if present
+  local total = 0
+  for _, cls in pairs(DB.getChildren(nodePC, "classes") or {}) do
+    total = total + (DB.getValue(cls, "level", 0) or 0)
+  end
+  if total > 0 then return total end
+
+  -- Last fallback
+  return 1
+end
+
+local function getPartyThresholds()
+  local pcs = getPartyCharNodes()
+  local partySize = #pcs
+  if partySize == 0 then
+    return 0, 0, 0, 0, 0
+  end
+
+  local easy, med, hard, deadly = 0, 0, 0, 0
+  for _, pc in ipairs(pcs) do
+    local lvl = clamp(getPCLevel(pc), 1, 20)
+    local th = XP_THRESHOLDS[lvl] or XP_THRESHOLDS[1]
+    easy   = easy   + th[1]
+    med    = med    + th[2]
+    hard   = hard   + th[3]
+    deadly = deadly + th[4]
+  end
+
+  return partySize, easy, med, hard, deadly
+end
+
+local function getNPCXP(nodeNPC)
+  if not nodeNPC then return 0 end
+  local xp = DB.getValue(nodeNPC, "xp", 0)
+  if type(xp) == "number" then return xp end
+  return parseNumber(xp)
+end
+
+local function resolveNPCRecord(nodeEncounterNPC)
+  -- Encounter NPC entry typically has a "link" field to an npc record
+  local sClass, sRecord = DB.getValue(nodeEncounterNPC, "link", "", "")
+  if sRecord and sRecord ~= "" then
+    return DB.findNode(sRecord)
+  end
+  return nil
+end
+
+local function getEncounterNPCList(nodeEncounter)
+  return DB.getChildren(nodeEncounter, "npclist") or {}
+end
+
+local function getNPCCount(nodeEncounterNPC)
+  local c = DB.getValue(nodeEncounterNPC, "count", 0)
+  if c and c > 0 then return c end
+  return 1
+end
+
+local function getEncounterXP(nodeEncounter)
+  local baseXP = 0
+  local monsterCount = 0
+
+  for _, encNPC in pairs(getEncounterNPCList(nodeEncounter)) do
+    local nCount = clamp(getNPCCount(encNPC), 0, 999)
+    if nCount > 0 then
+      local npcRecord = resolveNPCRecord(encNPC)
+      local xpEach = getNPCXP(npcRecord)
+      baseXP = baseXP + (xpEach * nCount)
+      monsterCount = monsterCount + nCount
+    end
+  end
+
+  return baseXP, monsterCount
+end
+
+local function getMultiplierByCount(monsterCount)
+  if monsterCount <= 0 then return 0 end
+  if monsterCount == 1 then return 1.0 end
+  if monsterCount == 2 then return 1.5 end
+  if monsterCount >= 3 and monsterCount <= 6 then return 2.0 end
+  if monsterCount >= 7 and monsterCount <= 10 then return 2.5 end
+  if monsterCount >= 11 and monsterCount <= 14 then return 3.0 end
+  return 4.0
+end
+
+local function shiftMultiplier(mult, steps)
+  -- DMG step ladder (ascending):
+  local ladder = {1.0, 1.5, 2.0, 2.5, 3.0, 4.0}
+  local idx = 1
+  for i, v in ipairs(ladder) do
+    if math.abs(v - mult) < 0.001 then
+      idx = i
+      break
+    end
+  end
+  idx = clamp(idx + steps, 1, #ladder)
+  return ladder[idx]
+end
+
+local function partySizeAdjustMultiplier(mult, partySize)
+  -- DMG: party size <3 => one step harder; party size >=6 => one step easier
+  if partySize > 0 and partySize < 3 then
+    return shiftMultiplier(mult, 1)
+  elseif partySize >= 6 then
+    return shiftMultiplier(mult, -1)
+  end
+  return mult
+end
+
+local function formatInt(n)
+  n = math.floor(n + 0.5)
+  local s = tostring(n)
+  local out = {}
+  local len = #s
+  local i = len
+  local c = 0
+  while i > 0 do
+    out[#out+1] = s:sub(i, i)
+    c = c + 1
+    if c == 3 and i > 1 then
+      out[#out+1] = ","
+      c = 0
+    end
+    i = i - 1
+  end
+  local rev = {}
+  for j = #out, 1, -1 do rev[#rev+1] = out[j] end
+  return table.concat(rev)
+end
+
+local function difficultyLabel(adjustedXP, easy, med, hard, deadly)
+  if adjustedXP <= 0 then return "—" end
+  if adjustedXP < easy then return "Trivial" end
+  if adjustedXP < med then return "Easy" end
+  if adjustedXP < hard then return "Medium" end
+  if adjustedXP < deadly then return "Hard" end
+  return "Deadly"
+end
+
+local function recalcEncounter(nodeEncounter)
+  if nodeEncounter == nil then
+    Debug.print("Recalc node is nil");
+    return
+  else
+    Debug.print("Recalc for node " .. DB.getPath(nodeEncounter));
+  end
+
+  local partySize, easy, med, hard, deadly = getPartyThresholds()
+  local baseXP, monsterCount = getEncounterXP(nodeEncounter)
+
+  local mult = getMultiplierByCount(monsterCount)
+  mult = partySizeAdjustMultiplier(mult, partySize)
+
+  local adjusted = baseXP * mult
+
+  local label = difficultyLabel(adjusted, easy, med, hard, deadly)
+
+  local text
+  local debugText
+  if monsterCount == 0 then
+    text = "  -"
+    debugText = "No monsters"
+  elseif partySize == 0 then
+    text = string.format("  %s", label)
+    debugText = string.format("%s • %s XP (x%.1f) • enemies %d • no party",
+      label, formatInt(adjusted), mult, monsterCount
+    )
+  else
+    text = string.format("  %s", label)
+    debugText = string.format("%s • %s XP (x%.1f) • enemies %d • party %d",
+      label, formatInt(adjusted), mult, monsterCount, partySize
+    )
+  end
+
+  Debug.print(debugText)
+  DB.setValue(nodeEncounter, "difficultytext", "string", text)
+end
+
+local function stripAtSuffix(path)
+  return string.gsub(path, "@.*$", "")
+end
+
+local function recalcFromNode(node)
+  local cur = node
+  for _ = 1, 12 do
+    if not cur then return end
+    local parent = cur.getParent and cur.getParent() or nil
+
+    if parent then
+      local p = parent.getPath and parent.getPath() or ""
+      if string.gsub(p, "@.*$", "") == "battle" then
+        recalcEncounter(cur)
+        return
+      end
+    end
+
+    cur = parent
+  end
+end
+
+local function onPartyChanged()
+  Debug.print("Party changed, recalc open encounters")
+  for w in pairs(openBattles) do
+    local node = w.getDatabaseNode and w.getDatabaseNode()
+    if node then
+      recalcEncounter(node)
+    end
+  end
+end
+
+local function onEncounterChanged(node)
+  if node then
+    Debug.print("Encounter changed, recalc path " .. node.getPath())
+    recalcFromNode(node)
+  end
+end
+
+local function dumpNode(node, indent)
+  indent = indent or ""
+  Debug.print(indent .. node.getPath())
+
+  for _, child in pairs(DB.getChildren(node) or {}) do
+    dumpNode(child, indent .. "  ")
+  end
+end
+
+local function onSlashDumpNode(sCmd, sParams)
+  if not sParams or sParams == "" then
+    Debug.print("Usage: /dumpnode <dbpath>")
+    return
+  end
+
+  local node
+  if sParams == "root" then
+    node = DB.getRoot()
+  else
+    node = DB.findNode(sParams)
+  end
+  if not node then
+    Debug.print("Node not found: " .. sParams)
+    return
+  end
+
+  Debug.print("=== Dumping DB node: " .. sParams .. " ===")
+  dumpNode(node)
+  Debug.print("=== End dump ===")
+end
+
+local function initBattleHandlers()
+
+  -- New encounter example path:
+  -- battle.id-00001.npclist.id-00002.count
+
+  -- Module encounter example path:
+  -- battle.id-00015.npclist.id-00001.count@Alagoran's Gem
+
+  local tMappings = RecordDataManager.getDataPaths("battle")
+
+  for _, sMapping in ipairs(tMappings) do
+    local base = DB.getPath(sMapping)
+
+    Debug.print("initBattleHandlers mapping: " .. sMapping .. ", base: " .. base)
+
+    -- Watch NPC list changes
+    DB.addHandler(base .. ".*.npclist", "onChildAdded",  onEncounterChanged)
+    DB.addHandler(base .. ".*.npclist", "onChildDeleted", onEncounterChanged)
+
+    DB.addHandler(base .. ".*.npclist@*", "onChildAdded",  onEncounterChanged)
+    DB.addHandler(base .. ".*.npclist@*", "onChildDeleted", onEncounterChanged)
+
+    -- Watch count + link changes
+    DB.addHandler(base .. ".*.npclist.*.count", "onUpdate", onEncounterChanged)
+    DB.addHandler(base .. ".*.npclist.*.link",  "onUpdate", onEncounterChanged)
+
+    DB.addHandler(base .. ".*.npclist.*.count@*", "onUpdate", onEncounterChanged)
+    DB.addHandler(base .. ".*.npclist.*.link@*",  "onUpdate", onEncounterChanged)
+  end
+end
+
+function onInit()
+  Debug.print("Encounter difficulty extension onInit")
+  Comm.registerSlashHandler("dumpnode", onSlashDumpNode)
+
+  if User.isHost() == true then
+    local oldOpen = Interface.onWindowOpened
+    Interface.onWindowOpened = function(w)
+      if oldOpen then oldOpen(w) end
+      if w.getClass and w.getClass() == "battle" then
+        openBattles[w] = true
+        local node = w.getDatabaseNode and w.getDatabaseNode()
+        if node then
+          recalcEncounter(node)
+        end
+      end
+    end
+
+    local oldClose = Interface.onWindowClosed
+    Interface.onWindowClosed = function(w)
+      if oldClose then oldClose(w) end
+      openBattles[w] = nil
+    end
+
+    initBattleHandlers()
+
+    -- Party changes
+    DB.addHandler("partysheet.partyinformation.*", "onChildAdded", onPartyChanged)
+    DB.addHandler("partysheet.partyinformation.*", "onChildDeleted", onPartyChanged)
+    DB.addHandler("partysheet.partyinformation.*", "onChildUpdate", onPartyChanged)
+    DB.addHandler("partysheet.partyinformation.*.link", "onUpdate", onPartyChanged)
+
+    Debug.print("Encounter difficulty extension initialisation done")
+  else
+    Debug.print("Not host, skipping encounter difficulty extension")
+  end
+end

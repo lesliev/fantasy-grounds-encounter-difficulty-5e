@@ -1,0 +1,78 @@
+How to create Lua extensions in Fantasy Grounds
+
+Step 1 - minimal working extension
+----------------------------------
+
+1. Create a directory structure for extensions. Mine:
+
+fantasy_grounds_ext
+├── deploy.sh
+├── EncounterDifficulty
+│ ├── extension.xml
+│ ├── README.txt
+│ └── scripts
+│     └── encounter_difficulty.lua
+└── EncounterDifficulty.ext
+
+
+2. In the files:
+
+README.txt:
+
+Put anything you like here.
+
+extension.xml:
+
+<?xml version="1.0" encoding="iso-8859-1"?>
+<root version="4.1" release="1.0">
+	<properties>
+		<name>Encounter Difficulty 5e 2014</name>
+		<version>1</version>
+		<description>Calculates encounter difficulty based on characters in the party, for 2014 5th edition rules</description>
+		<author>Leslie Viljoen</author>
+		<loadorder>50</loadorder>
+		<ruleset>
+			<name>5E</name>
+		</ruleset>
+	</properties>
+
+	<base>
+		<script name="EncounterDifficulty" file="scripts/encounter_difficulty.lua"/>
+	</base>
+</root>
+
+encounter_difficulty.lua:
+
+function onInit()
+  Debug.print("We got here!")
+end
+
+deploy.sh: (you will need to update this for your own path to FG)
+
+#!/bin/bash
+cd EncounterDifficulty
+zip -r ../EncounterDifficulty.ext .
+cd ..
+cp EncounterDifficulty.ext "/home/leslie/.steam/debian-installation/steamapps/compatdata/1196310/pfx/drive_c/users/steamuser/AppData/Roaming/SmiteWorks/Fantasy Grounds/extensions"
+
+3. Edit deploy.sh
+
+This is what creates EncounterDifficulty.ext, which is actually a zip file. Edit this
+as necessary to zip up the EncounterDifficulty files and copy that new file to the
+Fantasy Grounds extensions directory.
+
+4. Test
+
+Now run deploy.sh and open Fantasy Grounds. Create a campaign for testing extensions. You
+should see your new extension listed in the launcher - pick that. Then launch the campaign.
+When you get in, type "/console" in the chat window.
+
+You should see "We got here!" in the console window.
+You should see "Extension (Encounter Difficulty 5e 2014) loaded" in the chat window.
+
+Now you have a working base to iterate from.
+
+5. Iterate
+
+As you make changes, you are going to rerun "deploy" to re-zip and copy your extension back to Fantasy Grounds, then run "/reload" in the chat window to reload everything.
+
