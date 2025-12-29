@@ -191,7 +191,7 @@ local function recalcEncounter(nodeEncounter)
     Debug.print("Recalc node is nil");
     return
   else
-    Debug.print("Recalc for node " .. DB.getPath(nodeEncounter));
+    -- Debug.print("Recalc for node " .. DB.getPath(nodeEncounter));
   end
 
   local partySize, easy, med, hard, deadly = getPartyThresholds()
@@ -248,7 +248,7 @@ local function recalcFromNode(node)
 end
 
 local function onPartyChanged()
-  Debug.print("Party changed, recalc open encounters")
+  -- Debug.print("Party changed, recalc open encounters")
   for w in pairs(openBattles) do
     local node = w.getDatabaseNode and w.getDatabaseNode()
     if node then
@@ -259,7 +259,7 @@ end
 
 local function onEncounterChanged(node)
   if node then
-    Debug.print("Encounter changed, recalc path " .. node.getPath())
+    -- Debug.print("Encounter changed, recalc path " .. node.getPath())
     recalcFromNode(node)
   end
 end
@@ -271,28 +271,6 @@ local function dumpNode(node, indent)
   for _, child in pairs(DB.getChildren(node) or {}) do
     dumpNode(child, indent .. "  ")
   end
-end
-
-local function onSlashDumpNode(sCmd, sParams)
-  if not sParams or sParams == "" then
-    Debug.print("Usage: /dumpnode <dbpath>")
-    return
-  end
-
-  local node
-  if sParams == "root" then
-    node = DB.getRoot()
-  else
-    node = DB.findNode(sParams)
-  end
-  if not node then
-    Debug.print("Node not found: " .. sParams)
-    return
-  end
-
-  Debug.print("=== Dumping DB node: " .. sParams .. " ===")
-  dumpNode(node)
-  Debug.print("=== End dump ===")
 end
 
 local function initBattleHandlers()
@@ -328,7 +306,6 @@ end
 
 function onInit()
   Debug.print("Encounter difficulty extension onInit")
-  Comm.registerSlashHandler("dumpnode", onSlashDumpNode)
 
   if User.isHost() == true then
     local oldOpen = Interface.onWindowOpened
