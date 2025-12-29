@@ -207,15 +207,15 @@ local function recalcEncounter(nodeEncounter)
   local text
   local debugText
   if monsterCount == 0 then
-    text = "  -"
+    text = "-"
     debugText = "No monsters"
   elseif partySize == 0 then
-    text = string.format("  %s", label)
+    text = string.format("%s", label)
     debugText = string.format("%s • %s XP (x%.1f) • enemies %d • no party",
       label, formatInt(adjusted), mult, monsterCount
     )
   else
-    text = string.format("  %s", label)
+    text = string.format("%s", label)
     debugText = string.format("%s • %s XP (x%.1f) • enemies %d • party %d",
       label, formatInt(adjusted), mult, monsterCount, partySize
     )
