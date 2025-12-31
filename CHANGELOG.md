@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.6] – 2025-1-1
+- Add tests and fix 2024 calculations
+
 ## [1.5] – 2025-12-31
 - Update some text now that we support 2024 rules
 
