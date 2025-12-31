@@ -15,8 +15,9 @@ Note that the extension ignores the combat tracker since it assumes you will be
 balancing encounters for the full party. So make sure all the party's characters
 are in the Party Sheet before you start balancing encounters.
 
-This extension is for Fantasy Grounds DnD 5th edition ruleset, using 2014 rules.
-It should be easy to adapt to other rulesets.
+This extension is for Fantasy Grounds DnD 5th edition ruleset. It should work
+for both 2014 and 2024 rules - but I don't have the 2024 DMG to double-check
+so your feedback is welcome!
 
 Here's a demo of the extension in action:
 https://www.youtube.com/watch?v=m-kz4Hj_8gQ
