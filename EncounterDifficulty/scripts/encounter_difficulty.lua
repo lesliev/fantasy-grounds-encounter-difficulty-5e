@@ -233,7 +233,7 @@ local function recalcEncounter(nodeEncounter)
     debugText = "No monsters"
   else
     local partyText = (partySize > 0)
-      and string.format("Party %d", partySize)
+      and string.format("Party: %d", partySize)
       or "No party"
 
     text = label
