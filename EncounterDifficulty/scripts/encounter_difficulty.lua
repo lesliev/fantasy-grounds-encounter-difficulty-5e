@@ -21,6 +21,30 @@ local XP_THRESHOLDS = {
   [20] = {2800, 5700, 8500, 12700},
 }
 
+local XP_BUDGET_2024 = {
+  [1]  = {50, 75, 100},
+  [2]  = {100, 150, 200},
+  [3]  = {150, 225, 400},
+  [4]  = {250, 375, 500},
+  [5]  = {500, 750, 1100},
+  [6]  = {600, 1000, 1400},
+  [7]  = {750, 1300, 1700},
+  [8]  = {1000, 1700, 2100},
+  [9]  = {1300, 2000, 2600},
+  [10] = {1600, 2300, 3100},
+  [11] = {1900, 2900, 4100},
+  [12] = {2200, 3700, 4700},
+  [13] = {2600, 4200, 5400},
+  [14] = {2900, 4900, 6200},
+  [15] = {3300, 5400, 7800},
+  [16] = {3800, 6100, 9800},
+  [17] = {4500, 7200, 11700},
+  [18] = {5000, 8700, 14200},
+  [19] = {5500, 10700, 17200},
+  [20] = {6400, 13200, 22000},
+}
+
+
 local openBattles = {}
 
 local function rulesVersion()
@@ -207,6 +231,21 @@ local function difficultyLabel2024(xp, budget)
   return "Extreme"
 end
 
+local function get2024Budget()
+  local pcs = getPartyCharNodes()
+  local low, mod, high = 0, 0, 0
+
+  for _, pc in ipairs(pcs) do
+    local lvl = clamp(getPCLevel(pc), 1, 20)
+    local row = XP_BUDGET_2024[lvl]
+    low  = low  + row[1]
+    mod  = mod  + row[2]
+    high = high + row[3]
+  end
+
+  return low, mod, high
+end
+
 local function recalcEncounter(nodeEncounter)
   if not nodeEncounter then
     Debug.print("Recalc node is nil")
@@ -220,7 +259,8 @@ local function recalcEncounter(nodeEncounter)
   local rv = rulesVersion()
   local label
   if rv == "2024" then
-    label = difficultyLabel2024(adjusted, deadly)
+    local low, mod, high = get2024Budget()
+    label = difficultyLabel2024(adjusted, high)
   else
     label = difficultyLabel(adjusted, easy, med, hard, deadly)
   end
@@ -378,3 +418,11 @@ function onInit()
     Debug.print("Not host, skipping encounter difficulty extension")
   end
 end
+
+-- For testing
+__encounter_test = {
+  recalcEncounter = recalcEncounter,
+  getEncounterXP = getEncounterXP,
+  getPartyThresholds = getPartyThresholds
+}
+
