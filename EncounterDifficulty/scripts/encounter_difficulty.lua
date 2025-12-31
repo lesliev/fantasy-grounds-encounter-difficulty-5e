@@ -23,6 +23,10 @@ local XP_THRESHOLDS = {
 
 local openBattles = {}
 
+local function rulesVersion()
+  return OptionsManager.getOption("GAVE") or "2014"
+end
+
 local function clamp(n, lo, hi)
   if n < lo then return lo end
   if n > hi then return hi end
@@ -156,6 +160,16 @@ local function partySizeAdjustMultiplier(mult, partySize)
   return mult
 end
 
+local function getAdjustedXP(baseXP, monsterCount, partySize)
+  if rulesVersion() == "2024" then
+    return baseXP, 1.0
+  end
+
+  local mult = getMultiplierByCount(monsterCount)
+  mult = partySizeAdjustMultiplier(mult, partySize)
+  return baseXP * mult, mult
+end
+
 local function formatInt(n)
   n = math.floor(n + 0.5)
   local s = tostring(n)
@@ -186,44 +200,69 @@ local function difficultyLabel(adjustedXP, easy, med, hard, deadly)
   return "Deadly"
 end
 
+local function difficultyLabel2024(xp, budget)
+  if xp <= budget * 0.5 then return "Low" end
+  if xp <= budget * 0.75 then return "Moderate" end
+  if xp <= budget then return "High" end
+  return "Extreme"
+end
+
 local function recalcEncounter(nodeEncounter)
-  if nodeEncounter == nil then
-    Debug.print("Recalc node is nil");
+  if not nodeEncounter then
+    Debug.print("Recalc node is nil")
     return
-  else
-    -- Debug.print("Recalc for node " .. DB.getPath(nodeEncounter));
   end
 
   local partySize, easy, med, hard, deadly = getPartyThresholds()
   local baseXP, monsterCount = getEncounterXP(nodeEncounter)
 
-  local mult = getMultiplierByCount(monsterCount)
-  mult = partySizeAdjustMultiplier(mult, partySize)
-
-  local adjusted = baseXP * mult
-
-  local label = difficultyLabel(adjusted, easy, med, hard, deadly)
+  local adjusted, mult = getAdjustedXP(baseXP, monsterCount, partySize)
+  local rv = rulesVersion()
+  local label
+  if rv == "2024" then
+    label = difficultyLabel2024(adjusted, deadly)
+  else
+    label = difficultyLabel(adjusted, easy, med, hard, deadly)
+  end
 
   local text
   local debugText
+
   if monsterCount == 0 then
     text = "-"
     debugText = "No monsters"
-  elseif partySize == 0 then
-    text = string.format("%s", label)
-    debugText = string.format("%s • %s XP (x%.1f) • enemies %d • no party",
-      label, formatInt(adjusted), mult, monsterCount
-    )
   else
-    text = string.format("%s", label)
-    debugText = string.format("%s • %s XP (x%.1f) • enemies %d • party %d",
-      label, formatInt(adjusted), mult, monsterCount, partySize
-    )
+    local partyText = (partySize > 0)
+      and string.format("Party %d", partySize)
+      or "No party"
+
+    text = label
+
+    local rv = rulesVersion()
+    if rv == "2024" then
+      debugText = string.format(
+        "%s\nXP: %s\nEnemies: %d\n%s\nRules: 2024",
+        label,
+        formatInt(adjusted),
+        monsterCount,
+        partyText
+      )
+    else
+      debugText = string.format(
+        "%s\nXP: %s (x%.1f)\nEnemies: %d\n%s\nRules: 2014",
+        label,
+        formatInt(adjusted),
+        mult,
+        monsterCount,
+        partyText
+      )
+    end
   end
 
-  Debug.print(debugText)
   DB.setValue(nodeEncounter, "difficultytext", "string", text)
+  DB.setValue(nodeEncounter, "difficultytooltip", "string", debugText)
 end
+
 
 local function stripAtSuffix(path)
   return string.gsub(path, "@.*$", "")

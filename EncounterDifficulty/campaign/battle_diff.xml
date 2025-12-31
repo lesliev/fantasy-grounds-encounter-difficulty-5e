@@ -6,6 +6,12 @@
         <anchored to="button_refreshcr" position="righthigh" offset="10,0" width="60" height="20" />
         <center />
       </basicstring>
+      <buttoncontrol name="difficultyhover">
+        <anchored to="button_refreshcr" position="righthigh" offset="10,0" width="60" height="20" />
+        <transparent />
+        <state />
+        <script file="scripts/difficultytooltip.lua" />
+      </buttoncontrol>
     </sheetdata>
   </windowclass>
 </root>
