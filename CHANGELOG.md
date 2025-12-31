@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.5] – 2025-12-31
+- Update some text now that we support 2024 rules
+
 ## [1.4] – 2025-12-31
 - Fix errant colon
 

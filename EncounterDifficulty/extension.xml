@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<root version="4.1" release="1.4">
+<root version="4.1" release="1.5">
 	<properties>
-		<name>Encounter Difficulty 5e 2014</name>
+		<name>Encounter Difficulty 5E</name>
 		<version>1</version>
-		<description>Calculates encounter difficulty based on characters in the party, for 2014 5th edition rules</description>
+		<description>Calculates encounter difficulty based on characters in the party, for 5th edition rules (both 2014 and 2024)</description>
 		<author>Leslie Viljoen</author>
 		<loadorder>50</loadorder>
 		<ruleset>
