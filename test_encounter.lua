@@ -13,7 +13,7 @@ DB = {
     if type(node) == "table" then
       local val = node[key]
       if key == "link" and type(val) == "string" then
-        return "", val   -- <- THIS is the important part
+        return "", val
       end
       return val or default
     end
@@ -121,15 +121,15 @@ local function runTest(name, party, monsters, expected)
   end
 end
 
--- =========================
--- Load your module
--- =========================
+-- ===========
+-- Load module
+-- ===========
 
 dofile("EncounterDifficulty/scripts/encounter_difficulty.lua")
 
--- =========================
+-- ===============
 -- Build mock data
--- =========================
+-- ===============
 
 -- Fake party
 DB._data["partysheet.partyinformation"] = {
