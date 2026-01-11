@@ -1,23 +1,26 @@
 # Changelog
 
-## [1.6] – 2025-1-1
+## [1.7] 2026-1-11
+- Ignore invalid windows when recalculating all open encounters
+
+## [1.6] 2025-1-1
 - Add tests and fix 2024 calculations
 
-## [1.5] – 2025-12-31
+## [1.5] 2025-12-31
 - Update some text now that we support 2024 rules
 
-## [1.4] – 2025-12-31
+## [1.4] 2025-12-31
 - Fix errant colon
 
 ## [1.3]
 - Added 2024 rules support
 - Added tooltip with calculation details
 
-## [1.2] – 2025-12-30
+## [1.2] 2025-12-30
 - Improved formatting — difficulty text now anchored to CR
 
 ## [1.1]
 - Removed debug messages
 
-## [1.0] – 2025-12-28
+## [1.0] 2025-12-28
 - Initial release

@@ -329,9 +329,14 @@ end
 local function onPartyChanged()
   -- Debug.print("Party changed, recalc open encounters")
   for w in pairs(openBattles) do
-    local node = w.getDatabaseNode and w.getDatabaseNode()
-    if node then
+    local ok, node = pcall(function()
+      return w.getDatabaseNode and w.getDatabaseNode()
+    end)
+    if ok and node then
       recalcEncounter(node)
+    else
+      -- clean up broken window
+      openBattles[w] = nil
     end
   end
 end
